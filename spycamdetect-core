@@ -1,0 +1,147 @@
+
+//******************************************************
+//
+// SpyCAM Wifi detector
+//
+//2019/04
+//
+// https://snowglobe.io
+//
+// V:0.5
+//
+//******************************************************
+
+#include "WiFi.h"
+#include "SSD1306.h"
+#include <stdio.h>
+
+#include "Hidlist.h"
+
+#define LEDPIN 25;
+
+// Oled setup
+#define OLED_SCL 15               // GPIO15 / 
+#define OLED_SDA 4                // GPIO4 / 
+#define OLED_RST 16               // Reset pin (Some OLED displays do not have it)
+#define OLED_ADDR 0x3C            // Default 0x3C for 0.9", for 1.3" it is 0x78
+SSD1306  display(OLED_ADDR, OLED_SDA, OLED_SCL);// i2c ADDR & SDA, SCL on wemos
+
+bool hcw = false;
+
+void Test_Wifi_Name(int n){
+   int findw = 0;
+  for (int i = 0; i < n; ++i) { 
+          int len = (sizeof(Hlist)/sizeof(*Hlist));
+          for (int j= 0; j<len; j++){
+            Hlist[j].toUpperCase();
+            if (WiFi.SSID(i).indexOf(Hlist[j]) >= 0) {
+              if(!findw){
+              Serial.print("SpyCam FOUND !");
+              Serial.print(WiFi.SSID(i));
+              display.clear();
+              display.setFont (ArialMT_Plain_10);
+              display.drawString(0, 0, "SpyCAM WiFi FOUND !");
+              }
+              // Print SSID and RSSI for each network found
+              display.drawString (0, 12+findw*8, WiFi.SSID(i));
+              display.drawString (100, 12+findw*8, "("+String(WiFi.RSSI(i))+")");
+              display.display ();
+              delay(10);
+              hcw = true;
+              ++findw;
+            }
+            Hlist[j].toLowerCase();
+            if (WiFi.SSID(i).indexOf(Hlist[j]) >= 0) {
+              if(!findw){
+              Serial.print("SpyCam FOUND !");
+              Serial.print(WiFi.SSID(i));
+              display.clear();
+              display.setFont (ArialMT_Plain_10);
+              display.drawString(0, 0, "SpyCAM WiFi FOUND !");
+              }
+              // Print SSID and RSSI for each network found
+              display.drawString (0, 12+findw*8, WiFi.SSID(i));
+              display.drawString (100, 12+findw*8, "("+String(WiFi.RSSI(i))+")");
+              display.display ();
+              delay(10);
+              hcw = true;
+              ++findw;
+            }
+            }
+            // Print SSID and RSSI for each network found
+            Serial.print(i + 1);
+            Serial.print(": ");
+            Serial.print(WiFi.SSID(i));
+            Serial.print(" (");
+            Serial.print(WiFi.RSSI(i));
+            Serial.print(")\n");   
+        }
+}
+
+void setup()
+{
+    Serial.begin(115200);
+
+    // Set WiFi to station mode and disconnect from an AP if it was previously connected
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(100);
+//Set up and reset the OLED
+    pinMode(OLED_RST, OUTPUT);
+    digitalWrite(OLED_RST, LOW);
+    delay(50);
+    digitalWrite(OLED_RST, HIGH);
+    display.init ();
+    display.flipScreenVertically ();
+    display.setFont (ArialMT_Plain_10);
+    display.setTextAlignment (TEXT_ALIGN_LEFT);
+    display.drawString (0, 0, "Starting....");
+    display.drawString (0, 25, "SpyCAM Wifi Detector");
+    display.drawString (0, 50, "V:0.5");
+    display.display ();
+    delay(5000);   
+    Serial.println("Setup done");
+}
+
+void loop()
+{
+     
+    Serial.println("WiFi scanner start");
+    display.clear();
+    display.setFont (ArialMT_Plain_16);
+    display.drawString (0, 0, "WiFi scanner start....");
+    display.display ();
+
+    // WiFi.scanNetworks will return the number of networks found
+    int n = WiFi.scanNetworks();
+    Serial.println("scan done");
+    display.clear();
+    if (n == 0) {
+        Serial.println("no WiFi networks found");
+
+        display.drawString (0, 0, "no WiFi networks found");
+        display.display ();
+    } else {
+        Serial.print(n);
+        Serial.println(" WiFi networks found");       
+        display.setFont(ArialMT_Plain_10);
+        display.drawString(0, 0, String(n));
+        display.drawString(10, 0, " WiFi networks found");
+        display.display ();
+        // TEST SpyCAM WIFI NAME
+        Test_Wifi_Name(n);
+        
+        if (!hcw){
+            Serial.println("No SpyCAM found");
+            display.setFont(ArialMT_Plain_16);
+            display.drawString(0, 20, "No SpyCAM");
+            display.setFont(ArialMT_Plain_10);
+            display.drawString(0, 50, "Next search in 10sec....");
+            display.display ();
+        }
+    Serial.println("");
+    }
+    
+    // Wait a bit before scanning again
+    delay(10000);
+}
